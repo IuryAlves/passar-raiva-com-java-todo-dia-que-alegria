@@ -1,0 +1,73 @@
+plugins {
+    id "groovy"
+    id 'org.jenkins-ci.jpi' version '0.27.0'
+    }
+
+group = "federated-jenkins"
+version = "0.0.1"
+
+repositories {
+    mavenCentral()
+    jcenter()
+    maven {
+        url 'https://repo.jenkins-ci.org/releases/'
+    }
+}
+
+dependencies {
+    jenkinsPlugins 'org.csanchez.jenkins.plugins:kubernetes:1.15.10'
+    compile "org.codehaus.groovy:groovy-all:2.5.5"
+    implementation group: 'org.jenkins-ci.main', name: 'jenkins-core', version: '2.176'
+    compile group:'com.lesfurets', name:'jenkins-pipeline-unit', version:'1.0'
+    testCompile "junit:junit:4.12"
+    testCompile group: 'org.mockito', name: 'mockito-core', version: '2.23.0'
+    //testCompile 'org.powermock:powermock:2.0.0-beta.5'
+    testCompile 'org.powermock:powermock-module-junit4:2.0.0-beta.5'
+    testCompile 'org.powermock:powermock-api-mockito2:2.0.0-beta.5'
+    providedCompile group: 'javax.servlet', name: 'javax.servlet-api', version: '3.1.0'
+}
+
+sourceSets {
+    main {
+        groovy {
+            srcDir 'src'
+        }
+    }
+    test {
+        groovy {
+            srcDir 'test'
+        }
+    }
+}
+
+test {
+    // delete old test reports
+    dependsOn cleanTest
+
+    // don't stop if tests fail
+    ignoreFailures = true
+
+    // minimize logging
+    testLogging.maxGranularity = 1
+
+    // show stdout from tests
+    onOutput { dest, event -> print event.message }
+
+    // show test results
+    def results = []
+    afterTest { desc, result ->
+        println "${desc.className.split("\\.")[-1]}: " +
+            "${desc.name}: ${result.resultType}"
+    }
+    afterSuite { desc, result ->
+       if (desc.className) { results << result }
+    }
+
+    // show summary
+    doLast {
+        println "Tests: ${results.sum { it.testCount }}" +
+            ", Failures: ${results.sum { it.failedTestCount }}" +
+            ", Errors: ${results.sum { it.exceptions.size() }}" + 
+            ", Skipped: ${results.sum { it.skippedTestCount }}" 
+    }
+}
